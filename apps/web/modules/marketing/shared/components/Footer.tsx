@@ -8,19 +8,23 @@ export function Footer() {
 				<div>
 					<Logo className="opacity-70 grayscale" />
 					<p className="mt-3 text-sm opacity-70">
-						© {new Date().getFullYear()} supastarter. All rights
+						© {new Date().getFullYear()} Minnesota Business Directory. All rights
 						reserved.
 					</p>
 				</div>
 
 				<div className="flex flex-col gap-2">
+					<LocaleLink href="/directory" className="block">
+						Business Directory
+					</LocaleLink>
+
+					<LocaleLink href="/events" className="block">
+						Events
+					</LocaleLink>
+
 					<LocaleLink href="/blog" className="block">
 						Blog
 					</LocaleLink>
-
-					<a href="#features" className="block">
-						Features
-					</a>
 
 					<a href="/#pricing" className="block">
 						Pricing
@@ -28,12 +32,20 @@ export function Footer() {
 				</div>
 
 				<div className="flex flex-col gap-2">
+					<LocaleLink href="/api-docs" className="block">
+						API Documentation
+					</LocaleLink>
+
 					<LocaleLink href="/legal/privacy-policy" className="block">
 						Privacy policy
 					</LocaleLink>
 
 					<LocaleLink href="/legal/terms" className="block">
 						Terms and conditions
+					</LocaleLink>
+
+					<LocaleLink href="/contact" className="block">
+						Contact Us
 					</LocaleLink>
 				</div>
 			</div>

@@ -11,6 +11,7 @@
 		"dotenv-cli": "^8.0.0",
 		"prisma": "^6.3.1",
 		"prisma-json-types-generator": "^3.2.2",
+		"tsx": "^4.7.1",
 		"zod-prisma-types": "^3.2.4"
 	},
 	"main": "./index.ts",
@@ -20,6 +21,8 @@
 		"push": "dotenv -c -e ../../.env -- prisma db push --skip-generate",
 		"migrate": "dotenv -c -e ../../.env -- prisma migrate dev",
 		"studio": "dotenv -c -e ../../.env -- prisma studio",
+		"seed": "dotenv -c -e ../../.env -- tsx prisma/seed.ts",
+		"seed:extended": "dotenv -c -e ../../.env -- tsx prisma/seed-extended.ts",
 		"type-check": "tsc --noEmit"
 	},
 	"types": "./**/.tsx",

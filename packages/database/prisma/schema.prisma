@@ -42,6 +42,13 @@ model User {
   purchases          Purchase[]
   memberships        Member[]
   aiChats            AiChat[]
+  // Business directory relationships
+  ownedBusinesses    Business[]   @relation("BusinessOwner")
+  reviews            Review[]
+  businessClaims     BusinessClaim[]
+  events             Event[]
+  // User preferences for personalization
+  preferences        UserPreferences?
 
   @@unique([email])
   @@unique([username])
@@ -129,6 +136,8 @@ model Organization {
   invitations        Invitation[]
   purchases          Purchase[]
   aiChats            AiChat[]
+  // Business directory relationships
+  businesses         Business[]
 
   @@unique([slug])
   @@map("organization")
@@ -194,5 +203,371 @@ model AiChat {
   messages       Json?
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
+}
+
+// ============= Minnesota Business Directory Models =============
+
+model Business {
+  id                   String               @id @default(cuid())
+  slug                 String               @unique
+  name                 String
+  description          String?              @db.Text
+  shortDescription     String?
+  logo                 String?
+  coverImage           String?
+  website              String?
+  email                String?
+  phone                String?
+  fax                  String?
+  yearEstablished      Int?
+  employeeCount        String?
+  // Status
+  status               BusinessStatus       @default(PENDING)
+  verified             Boolean              @default(false)
+  verifiedAt           DateTime?
+  featured             Boolean              @default(false)
+  featuredUntil        DateTime?
+  // Relationships
+  organizationId       String?
+  organization         Organization?        @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  claimedBy            User?                @relation("BusinessOwner", fields: [claimedById], references: [id], onDelete: SetNull)
+  claimedById          String?
+  categories           BusinessCategory[]   @relation("BusinessToCategory")
+  locations            BusinessLocation[]
+  hours                BusinessHours[]
+  reviews              Review[]
+  events               Event[]
+  analytics            BusinessAnalytics[]
+  claims               BusinessClaim[]
+  amenities            BusinessAmenity[]
+  socialLinks          BusinessSocialLink[]
+  // SEO
+  metaTitle            String?
+  metaDescription      String?
+  keywords             String[]
+  // Timestamps
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
+  
+  @@index([status])
+  @@index([verified])
+  @@index([featured])
+  @@index([organizationId])
+  @@index([claimedById])
+}
+
+enum BusinessStatus {
+  DRAFT
+  PENDING
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+model BusinessLocation {
+  id                String            @id @default(cuid())
+  businessId        String
+  business          Business          @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  name              String?           // For multi-location businesses
+  isPrimary         Boolean           @default(true)
+  // Address
+  streetAddress     String
+  streetAddress2    String?
+  city              String
+  state             String            @default("MN")
+  zipCode           String
+  country           String            @default("US")
+  // Geolocation
+  latitude          Float
+  longitude         Float
+  // Service area (radius in miles, null means physical location only)
+  serviceRadius     Float?
+  serviceAreas      String[]          // List of zip codes or city names
+  // Contact for this location
+  phone             String?
+  email             String?
+  // Hours can be different per location
+  hours             BusinessHours[]
+  
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  
+  @@index([businessId])
+  @@index([latitude, longitude])
+}
+
+model BusinessHours {
+  id                String            @id @default(cuid())
+  businessId        String
+  business          Business          @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  locationId        String?
+  location          BusinessLocation? @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  // Day of week (0 = Sunday, 6 = Saturday)
+  dayOfWeek         Int
+  openTime          String            // Format: "HH:MM"
+  closeTime         String            // Format: "HH:MM"
+  isClosed          Boolean           @default(false)
+  // Special hours
+  isSpecialHours    Boolean           @default(false)
+  specialDate       DateTime?         // For holiday hours
+  specialNote       String?           // e.g., "Christmas Eve"
+  
+  @@unique([businessId, locationId, dayOfWeek, specialDate])
+  @@index([businessId])
+  @@index([locationId])
+}
+
+model Category {
+  id                String              @id @default(cuid())
+  slug              String              @unique
+  name              String
+  description       String?
+  icon              String?
+  image             String?
+  parentId          String?
+  parent            Category?           @relation("CategoryHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
+  children          Category[]          @relation("CategoryHierarchy")
+  businesses        BusinessCategory[]  @relation("CategoryToBusiness")
+  featured          Boolean             @default(false)
+  displayOrder      Int                 @default(0)
+  // SEO
+  metaTitle         String?
+  metaDescription   String?
+  
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  
+  @@index([parentId])
+  @@index([featured])
+}
+
+model BusinessCategory {
+  businessId        String
+  business          Business            @relation("BusinessToCategory", fields: [businessId], references: [id], onDelete: Cascade)
+  categoryId        String
+  category          Category            @relation("CategoryToBusiness", fields: [categoryId], references: [id], onDelete: Cascade)
+  isPrimary         Boolean             @default(false)
+  
+  @@id([businessId, categoryId])
+  @@index([categoryId])
+}
+
+model BusinessAmenity {
+  id                String              @id @default(cuid())
+  businessId        String
+  business          Business            @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  name              String
+  category          String              // e.g., "accessibility", "payments", "services"
+  icon              String?
+  
+  @@index([businessId])
+  @@index([category])
+}
+
+model BusinessSocialLink {
+  id                String              @id @default(cuid())
+  businessId        String
+  business          Business            @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  platform          String              // facebook, instagram, twitter, etc.
+  url               String
+  
+  @@unique([businessId, platform])
+}
+
+model Event {
+  id                String              @id @default(cuid())
+  slug              String              @unique
+  title             String
+  description       String              @db.Text
+  shortDescription  String?
+  image             String?
+  // Event details
+  startDate         DateTime
+  endDate           DateTime?
+  allDay            Boolean             @default(false)
+  // Location
+  venue             String?
+  streetAddress     String?
+  city              String?
+  state             String              @default("MN")
+  zipCode           String?
+  latitude          Float?
+  longitude         Float?
+  virtualUrl        String?             // For online events
+  isVirtual         Boolean             @default(false)
+  isHybrid          Boolean             @default(false)
+  // Organizer
+  businessId        String?
+  business          Business?           @relation(fields: [businessId], references: [id], onDelete: SetNull)
+  organizerId       String?
+  organizer         User?               @relation(fields: [organizerId], references: [id], onDelete: SetNull)
+  organizerName     String?             // For non-registered organizers
+  organizerEmail    String?
+  organizerPhone    String?
+  // Ticketing
+  isFree            Boolean             @default(true)
+  price             Float?
+  priceMax          Float?              // For variable pricing
+  ticketUrl         String?
+  registrationUrl   String?
+  maxAttendees      Int?
+  // Categories
+  categories        String[]
+  tags              String[]
+  // Status
+  status            EventStatus         @default(DRAFT)
+  featured          Boolean             @default(false)
+  // Recurring events
+  isRecurring       Boolean             @default(false)
+  recurrenceRule    String?             // RRULE format
+  recurrenceEnd     DateTime?
+  parentEventId     String?             // For instances of recurring events
+  // SEO
+  metaTitle         String?
+  metaDescription   String?
+  
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  
+  @@index([startDate])
+  @@index([businessId])
+  @@index([organizerId])
+  @@index([status])
+  @@index([featured])
+}
+
+enum EventStatus {
+  DRAFT
+  PUBLISHED
+  CANCELLED
+  POSTPONED
+  COMPLETED
+}
+
+model Review {
+  id                String              @id @default(cuid())
+  businessId        String
+  business          Business            @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  userId            String
+  user              User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // Ratings
+  rating            Int                 // 1-5 stars
+  qualityRating     Int?                // Optional detailed ratings
+  serviceRating     Int?
+  valueRating       Int?
+  // Content
+  title             String?
+  content           String              @db.Text
+  pros              String?
+  cons              String?
+  // Media
+  photos            String[]
+  // Interaction
+  helpful           Int                 @default(0)
+  notHelpful        Int                 @default(0)
+  ownerResponse     String?             @db.Text
+  ownerRespondedAt  DateTime?
+  // Status
+  status            ReviewStatus        @default(PENDING)
+  verifiedPurchase  Boolean             @default(false)
+  
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  
+  @@unique([businessId, userId])
+  @@index([businessId])
+  @@index([userId])
+  @@index([status])
+  @@index([rating])
+}
+
+enum ReviewStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  FLAGGED
+}
+
+model BusinessClaim {
+  id                String              @id @default(cuid())
+  businessId        String
+  business          Business            @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  userId            String
+  user              User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // Verification
+  verificationType  ClaimVerificationType
+  verificationCode  String?
+  verificationData  Json?               // Store additional verification info
+  // Status
+  status            ClaimStatus         @default(PENDING)
+  rejectionReason   String?
+  notes             String?             @db.Text
+  // Documents
+  documents         String[]            // URLs to uploaded documents
+  
+  submittedAt       DateTime            @default(now())
+  reviewedAt        DateTime?
+  expiresAt         DateTime?
+  
+  @@index([businessId])
+  @@index([userId])
+  @@index([status])
+}
+
+enum ClaimVerificationType {
+  EMAIL
+  PHONE
+  DOCUMENT
+  PHYSICAL_MAIL
+}
+
+enum ClaimStatus {
+  PENDING
+  IN_REVIEW
+  APPROVED
+  REJECTED
+  EXPIRED
+}
+
+model BusinessAnalytics {
+  id                String              @id @default(cuid())
+  businessId        String
+  business          Business            @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  date              DateTime            @db.Date
+  // Metrics
+  views             Int                 @default(0)
+  detailViews       Int                 @default(0)
+  websiteClicks     Int                 @default(0)
+  phoneClicks       Int                 @default(0)
+  directionsClicks  Int                 @default(0)
+  shares            Int                 @default(0)
+  saves             Int                 @default(0)
+  // Search metrics
+  searchImpressions Int                 @default(0)
+  searchClicks      Int                 @default(0)
+  
+  @@unique([businessId, date])
+  @@index([businessId])
+  @@index([date])
+}
+
+model UserPreferences {
+  id                String       @id @default(cuid())
+  userId            String       @unique
+  user              User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // Location preferences
+  defaultCity       String?
+  defaultZipCode    String?
+  searchRadius      Int          @default(25) // miles
+  // Interest preferences
+  favoriteCategories String[]
+  // Notification preferences
+  emailNotifications Boolean     @default(true)
+  smsNotifications  Boolean      @default(false)
+  // Saved searches
+  savedSearches     Json?        // Array of saved search queries
+  
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
 }
 

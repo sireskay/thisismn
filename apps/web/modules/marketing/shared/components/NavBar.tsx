@@ -56,6 +56,14 @@ export function NavBar() {
 		href: string;
 	}[] = [
 		{
+			label: "Directory",
+			href: "/directory",
+		},
+		{
+			label: "Events",
+			href: "/events",
+		},
+		{
 			label: t("common.menu.pricing"),
 			href: "/#pricing",
 		},

@@ -1,4 +1,4 @@
-import { streamText, textModel } from "@repo/ai";
+import { streamText, textModel, openaiClient } from "@repo/ai";
 import { AiChatSchema, db } from "@repo/database";
 import { Hono } from "hono";
 import { describeRoute } from "hono-openapi";
